@@ -428,10 +428,12 @@ export class Panel {
 			(this.#agent as unknown as { config?: Record<string, unknown> }).config ??
 			{}
 		const rawHeaders = (agentConfig as { headers?: Record<string, string> }).headers
+		const baseURLValue = (agentConfig as { baseURL?: string }).baseURL
+		const modelValue = (agentConfig as { model?: string }).model
 
 		return {
-			baseURL: (agentConfig as { baseURL?: string }).baseURL || Panel.DEFAULT_BASE_URL,
-			model: (agentConfig as { model?: string }).model || Panel.DEFAULT_MODEL,
+			baseURL: baseURLValue?.trim() || Panel.DEFAULT_BASE_URL,
+			model: modelValue?.trim() || Panel.DEFAULT_MODEL,
 			apiKey: (agentConfig as { apiKey?: string }).apiKey || '',
 			headers: this.#normalizeHeaders(rawHeaders),
 		}
