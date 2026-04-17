@@ -17,6 +17,18 @@ export interface PanelConfig {
 	promptForNextTask?: boolean
 }
 
+interface HeaderEntry {
+	name: string
+	value: string
+}
+
+interface SettingsState {
+	baseURL: string
+	model: string
+	apiKey: string
+	headers: HeaderEntry[]
+}
+
 /**
  * Agent control panel
  *
@@ -36,6 +48,15 @@ export class Panel {
 	#actionButton: HTMLElement
 	#inputSection: HTMLElement
 	#taskInput: HTMLInputElement
+	#settingsButton: HTMLButtonElement
+	#settingsOverlay: HTMLElement
+	#settingsCloseButton: HTMLButtonElement
+	#settingsSaveButton: HTMLButtonElement
+	#settingsBaseUrlInput: HTMLInputElement
+	#settingsModelInput: HTMLInputElement
+	#settingsApiKeyInput: HTMLInputElement
+	#settingsHeadersList: HTMLElement
+	#settingsAddHeaderButton: HTMLButtonElement
 
 	#agent: PanelAgentAdapter
 	#config: PanelConfig
@@ -46,6 +67,7 @@ export class Panel {
 	#headerUpdateTimer: ReturnType<typeof setInterval> | null = null
 	#pendingHeaderText: string | null = null
 	#isAnimating = false
+	#settingsState: SettingsState
 
 	// Event handlers (bound for removal)
 	#onStatusChange = () => this.#handleStatusChange()
@@ -79,6 +101,16 @@ export class Panel {
 		this.#actionButton = this.#wrapper.querySelector(`.${styles.stopButton}`)!
 		this.#inputSection = this.#wrapper.querySelector(`.${styles.inputSectionWrapper}`)!
 		this.#taskInput = this.#wrapper.querySelector(`.${styles.taskInput}`)!
+		this.#settingsButton = this.#wrapper.querySelector(`.${styles.settingsButton}`)!
+		this.#settingsOverlay = this.#wrapper.querySelector(`.${styles.settingsOverlay}`)!
+		this.#settingsCloseButton = this.#wrapper.querySelector(`.${styles.settingsCloseButton}`)!
+		this.#settingsSaveButton = this.#wrapper.querySelector(`.${styles.saveSettingsButton}`)!
+		this.#settingsBaseUrlInput = this.#wrapper.querySelector(`.${styles.settingsBaseUrlInput}`)!
+		this.#settingsModelInput = this.#wrapper.querySelector(`.${styles.settingsModelInput}`)!
+		this.#settingsApiKeyInput = this.#wrapper.querySelector(`.${styles.settingsApiKeyInput}`)!
+		this.#settingsHeadersList = this.#wrapper.querySelector(`.${styles.headersList}`)!
+		this.#settingsAddHeaderButton = this.#wrapper.querySelector(`.${styles.addHeaderButton}`)!
+		this.#settingsState = this.#getInitialSettings()
 
 		// Listen to agent events
 		this.#agent.addEventListener('statuschange', this.#onStatusChange)
@@ -368,6 +400,172 @@ export class Panel {
 		return false
 	}
 
+	#getInitialSettings(): SettingsState {
+		const agentConfig =
+			this.#agent.getLLMConfig?.() ??
+			(this.#agent as unknown as { config?: Record<string, unknown> }).config ??
+			{}
+		const rawHeaders = (agentConfig as { headers?: Record<string, string> }).headers
+
+		return {
+			baseURL: (agentConfig as { baseURL?: string }).baseURL || '',
+			model: (agentConfig as { model?: string }).model || '',
+			apiKey: (agentConfig as { apiKey?: string }).apiKey || '',
+			headers: this.#normalizeHeaders(rawHeaders),
+		}
+	}
+
+	#getDefaultHeaders(): HeaderEntry[] {
+		return [
+			{ name: 'Content-Type', value: 'application/json' },
+			{ name: 'Accept', value: 'application/json' },
+		]
+	}
+
+	#normalizeHeaders(headers?: Record<string, string>): HeaderEntry[] {
+		const entries = headers ? Object.entries(headers).map(([name, value]) => ({ name, value })) : []
+		const defaults = this.#getDefaultHeaders()
+		if (entries.length === 0) return defaults
+		while (entries.length < 2) {
+			entries.push(defaults[entries.length] ?? { name: '', value: '' })
+		}
+		return entries
+	}
+
+	#openSettings(): void {
+		this.#settingsState = this.#getInitialSettings()
+		this.#settingsBaseUrlInput.value = this.#settingsState.baseURL
+		this.#settingsModelInput.value = this.#settingsState.model
+		this.#settingsApiKeyInput.value = this.#settingsState.apiKey
+		this.#renderHeaderInputs(this.#settingsState.headers)
+		this.#settingsOverlay.classList.remove(styles.hidden)
+	}
+
+	#closeSettings(): void {
+		this.#settingsOverlay.classList.add(styles.hidden)
+	}
+
+	#renderHeaderInputs(headers: HeaderEntry[]): void {
+		this.#settingsHeadersList.innerHTML = ''
+		headers.forEach((header, index) => {
+			this.#settingsHeadersList.appendChild(this.#createHeaderRow(header, index))
+		})
+		this.#ensureHeaderRows()
+	}
+
+	#createHeaderRow(header: HeaderEntry, index: number): HTMLElement {
+		const row = document.createElement('div')
+		row.className = styles.headerRow
+
+		const nameInput = document.createElement('input')
+		nameInput.type = 'text'
+		nameInput.className = `${styles.settingsInput} ${styles.headerInput}`
+		nameInput.placeholder = this.#i18n.t('ui.panel.headerNamePlaceholder')
+		nameInput.value = header.name
+
+		const valueInput = document.createElement('input')
+		valueInput.type = 'text'
+		valueInput.className = `${styles.settingsInput} ${styles.headerInput}`
+		valueInput.placeholder = this.#i18n.t('ui.panel.headerValuePlaceholder')
+		valueInput.value = header.value
+
+		const removeButton = document.createElement('button')
+		removeButton.type = 'button'
+		removeButton.className = styles.settingsIconButton
+		removeButton.textContent = '−'
+		removeButton.title = this.#i18n.t('ui.panel.removeHeader')
+		removeButton.addEventListener('click', (e) => {
+			e.stopPropagation()
+			row.remove()
+			this.#ensureHeaderRows()
+		})
+
+		if (index === 0) {
+			row.classList.add(styles.headerRowFirst)
+		}
+
+		row.appendChild(nameInput)
+		row.appendChild(valueInput)
+		row.appendChild(removeButton)
+
+		return row
+	}
+
+	#ensureHeaderRows(): void {
+		while (this.#settingsHeadersList.children.length < 2) {
+			this.#addHeaderRow({ name: '', value: '' })
+		}
+	}
+
+	#addHeaderRow(header: HeaderEntry): void {
+		this.#settingsHeadersList.appendChild(
+			this.#createHeaderRow(header, this.#settingsHeadersList.children.length)
+		)
+	}
+
+	#collectHeadersFromUI(): Record<string, string> {
+		const headers: Record<string, string> = {}
+		const rows = Array.from(this.#settingsHeadersList.children) as HTMLElement[]
+		rows.forEach((row) => {
+			const inputs = row.querySelectorAll('input')
+			const name = inputs[0]?.value.trim() || ''
+			const value = inputs[1]?.value || ''
+			if (name) {
+				headers[name] = value
+			}
+		})
+
+		if (Object.keys(headers).length === 0) {
+			for (const { name, value } of this.#getDefaultHeaders()) {
+				headers[name] = value
+			}
+		}
+
+		return headers
+	}
+
+	#handleSaveSettings(): void {
+		const baseURL = this.#settingsBaseUrlInput.value.trim() || this.#settingsState.baseURL
+		const model = this.#settingsModelInput.value.trim() || this.#settingsState.model
+		const apiKey = this.#settingsApiKeyInput.value.trim()
+		const headers = this.#collectHeadersFromUI()
+
+		if (!baseURL || !model) {
+			this.#pendingHeaderText = this.#i18n.t('ui.panel.settingsMissingFields')
+			this.#updateStatusIndicator('error')
+			return
+		}
+
+		this.#settingsState = {
+			baseURL,
+			model,
+			apiKey,
+			headers: this.#normalizeHeaders(headers),
+		}
+
+		if (!this.#agent.updateLLMConfig) {
+			this.#pendingHeaderText = this.#i18n.t('ui.panel.settingsError')
+			this.#updateStatusIndicator('error')
+			return
+		}
+
+		try {
+			this.#agent.updateLLMConfig?.({
+				baseURL,
+				model,
+				apiKey: apiKey || undefined,
+				headers,
+			})
+			this.#pendingHeaderText = this.#i18n.t('ui.panel.settingsSaved')
+			this.#updateStatusIndicator('executed')
+			this.#closeSettings()
+		} catch (error) {
+			console.error(error)
+			this.#pendingHeaderText = this.#i18n.t('ui.panel.settingsError')
+			this.#updateStatusIndicator('error')
+		}
+	}
+
 	#createWrapper(): HTMLElement {
 		const taskInputMaxLength = 1000
 		const wrapper = document.createElement('div')
@@ -404,11 +602,55 @@ export class Panel {
 			</div>
 			<div class="${styles.inputSectionWrapper} ${styles.hidden}">
 				<div class="${styles.inputSection}">
+					<button 
+						type="button"
+						class="${styles.controlButton} ${styles.settingsButton}"
+						title="${this.#i18n.t('ui.panel.settings')}"
+					>
+						⚙️
+					</button>
 					<input 
 						type="text" 
 						class="${styles.taskInput}" 
 						maxlength="${taskInputMaxLength}"
 					/>
+				</div>
+			</div>
+			<div class="${styles.settingsOverlay} ${styles.hidden}">
+				<div class="${styles.settingsCard}">
+					<div class="${styles.settingsHeader}">
+						<div class="${styles.settingsTitle}">${this.#i18n.t('ui.panel.settings')}</div>
+						<button 
+							type="button" 
+							class="${styles.settingsIconButton} ${styles.settingsCloseButton}" 
+							title="${this.#i18n.t('ui.panel.closeSettings')}"
+						>
+							×
+						</button>
+					</div>
+					<div class="${styles.settingsBody}">
+						<label class="${styles.settingsLabel}">${this.#i18n.t('ui.panel.baseURL')}</label>
+						<input type="text" class="${styles.settingsInput} ${styles.settingsBaseUrlInput}" placeholder="${this.#i18n.t('ui.panel.baseURLPlaceholder')}" />
+
+						<label class="${styles.settingsLabel}">${this.#i18n.t('ui.panel.model')}</label>
+						<input type="text" class="${styles.settingsInput} ${styles.settingsModelInput}" placeholder="${this.#i18n.t('ui.panel.modelPlaceholder')}" />
+
+						<label class="${styles.settingsLabel}">${this.#i18n.t('ui.panel.apiKey')}</label>
+						<input type="password" class="${styles.settingsInput} ${styles.settingsApiKeyInput}" placeholder="${this.#i18n.t('ui.panel.apiKeyPlaceholder')}" />
+
+						<div class="${styles.settingsGroup}">
+							<div class="${styles.settingsGroupHeader}">
+								<span class="${styles.settingsLabel}">${this.#i18n.t('ui.panel.customHeaders')}</span>
+								<button type="button" class="${styles.settingsIconButton} ${styles.addHeaderButton}" title="${this.#i18n.t('ui.panel.addHeader')}">+</button>
+							</div>
+							<div class="${styles.headersList}"></div>
+						</div>
+					</div>
+					<div class="${styles.settingsFooter}">
+						<button type="button" class="${styles.settingsPrimaryButton} ${styles.saveSettingsButton}">
+							${this.#i18n.t('ui.panel.saveSettings')}
+						</button>
+					</div>
 				</div>
 			</div>
 		`
@@ -438,6 +680,33 @@ export class Panel {
 		this.#actionButton.addEventListener('click', (e) => {
 			e.stopPropagation()
 			this.#handleActionButton()
+		})
+
+		// Settings button
+		this.#settingsButton.addEventListener('click', (e) => {
+			e.stopPropagation()
+			this.#openSettings()
+		})
+
+		this.#settingsOverlay.addEventListener('click', (e) => {
+			if (e.target === this.#settingsOverlay) {
+				this.#closeSettings()
+			}
+		})
+
+		this.#settingsCloseButton.addEventListener('click', (e) => {
+			e.stopPropagation()
+			this.#closeSettings()
+		})
+
+		this.#settingsSaveButton.addEventListener('click', (e) => {
+			e.stopPropagation()
+			this.#handleSaveSettings()
+		})
+
+		this.#settingsAddHeaderButton.addEventListener('click', (e) => {
+			e.stopPropagation()
+			this.#addHeaderRow({ name: '', value: '' })
 		})
 
 		// Submit on Enter key in input field

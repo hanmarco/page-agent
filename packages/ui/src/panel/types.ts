@@ -28,6 +28,22 @@ export type AgentActivity =
  * - 'dispose': Agent is being disposed
  */
 export interface PanelAgentAdapter extends EventTarget {
+	getLLMConfig?: () => {
+		baseURL: string
+		model: string
+		apiKey?: string
+		headers?: Record<string, string>
+	}
+
+	updateLLMConfig?: (
+		config: Partial<{
+			baseURL: string
+			model: string
+			apiKey?: string
+			headers?: Record<string, string>
+		}>
+	) => void
+
 	/** Current agent status */
 	readonly status: 'idle' | 'running' | 'completed' | 'error'
 

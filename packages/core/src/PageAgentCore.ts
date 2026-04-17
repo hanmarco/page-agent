@@ -3,7 +3,7 @@
  * Copyright (C) 2026 SimonLuvRamen
  * All rights reserved.
  */
-import { InvokeError, LLM, type Tool } from '@page-agent/llms'
+import { InvokeError, LLM, type LLMConfig, type Tool, parseLLMConfig } from '@page-agent/llms'
 import type { BrowserState, PageController } from '@page-agent/page-controller'
 import chalk from 'chalk'
 import * as z from 'zod/v4'
@@ -83,6 +83,47 @@ export class PageAgentCore extends EventTarget {
 	#llm: LLM
 	#abortController = new AbortController()
 	#observations: string[] = []
+	#onLlmRetry = (e: Event) => {
+		const { attempt, maxAttempts } = (e as CustomEvent).detail
+		this.#emitActivity({ type: 'retrying', attempt, maxAttempts })
+		// Also push to history for panel rendering
+		this.history.push({
+			type: 'retry',
+			message: `LLM retry attempt ${attempt} of ${maxAttempts}`,
+			attempt,
+			maxAttempts,
+		})
+		this.#emitHistoryChange()
+	}
+	#onLlmError = (e: Event) => {
+		const error = (e as CustomEvent).detail.error as Error | InvokeError
+		if ((error as any)?.rawError?.name === 'AbortError') return
+		const message = String(error)
+		this.#emitActivity({ type: 'error', message })
+		// Also push to history for panel rendering
+		this.history.push({
+			type: 'error',
+			message,
+			rawResponse: (error as InvokeError).rawResponse,
+		})
+		this.#emitHistoryChange()
+	}
+
+	#attachLlmListeners(llm: LLM): void {
+		llm.addEventListener('retry', this.#onLlmRetry)
+		llm.addEventListener('error', this.#onLlmError)
+	}
+
+	#detachLlmListeners(llm: LLM): void {
+		llm.removeEventListener('retry', this.#onLlmRetry)
+		llm.removeEventListener('error', this.#onLlmError)
+	}
+
+	#createLLM(config: LLMConfig): LLM {
+		const llm = new LLM(config)
+		this.#attachLlmListeners(llm)
+		return llm
+	}
 
 	/** internal states during a single task execution */
 	#states = {
@@ -99,36 +140,9 @@ export class PageAgentCore extends EventTarget {
 
 		this.config = { ...config, maxSteps: config.maxSteps ?? 40 }
 
-		this.#llm = new LLM(this.config)
+		this.#llm = this.#createLLM(this.config)
 		this.tools = new Map(tools)
 		this.pageController = config.pageController
-
-		// Listen to LLM retry events
-		this.#llm.addEventListener('retry', (e) => {
-			const { attempt, maxAttempts } = (e as CustomEvent).detail
-			this.#emitActivity({ type: 'retrying', attempt, maxAttempts })
-			// Also push to history for panel rendering
-			this.history.push({
-				type: 'retry',
-				message: `LLM retry attempt ${attempt} of ${maxAttempts}`,
-				attempt,
-				maxAttempts,
-			})
-			this.#emitHistoryChange()
-		})
-		this.#llm.addEventListener('error', (e) => {
-			const error = (e as CustomEvent).detail.error as Error | InvokeError
-			if ((error as any)?.rawError?.name === 'AbortError') return
-			const message = String(error)
-			this.#emitActivity({ type: 'error', message })
-			// Also push to history for panel rendering
-			this.history.push({
-				type: 'error',
-				message,
-				rawResponse: (error as InvokeError).rawResponse,
-			})
-			this.#emitHistoryChange()
-		})
 
 		if (this.config.customTools) {
 			for (const [name, tool] of Object.entries(this.config.customTools)) {
@@ -191,6 +205,43 @@ export class PageAgentCore extends EventTarget {
 		this.pageController.cleanUpHighlights()
 		this.pageController.hideMask()
 		this.#abortController.abort()
+	}
+
+	getLLMConfig(): Pick<LLMConfig, 'baseURL' | 'model' | 'apiKey' | 'headers'> {
+		const { baseURL, model, apiKey, headers } = this.#llm.config
+		return {
+			baseURL,
+			model,
+			apiKey,
+			headers: { ...headers },
+		}
+	}
+
+	updateLLMConfig(config: Partial<LLMConfig>): void {
+		if (this.status === 'running') {
+			throw new Error('Cannot update LLM config while a task is running.')
+		}
+
+		const sanitizedHeaders =
+			config.headers === undefined
+				? undefined
+				: Object.fromEntries(
+						Object.entries(config.headers)
+							.filter(([key]) => key.trim())
+							.map(([key, value]) => [key.trim(), value])
+					)
+
+		const mergedConfig: LLMConfig = {
+			...this.#llm.config,
+			...config,
+			headers: sanitizedHeaders ?? this.#llm.config.headers,
+		}
+
+		const parsedConfig = parseLLMConfig(mergedConfig)
+
+		this.#detachLlmListeners(this.#llm)
+		this.#llm = this.#createLLM(parsedConfig)
+		Object.assign(this.config, parsedConfig)
 	}
 
 	async execute(task: string): Promise<ExecutionResult> {

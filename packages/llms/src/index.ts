@@ -19,6 +19,7 @@ export function parseLLMConfig(config: LLMConfig): Required<LLMConfig> {
 		baseURL: config.baseURL,
 		model: config.model,
 		apiKey: config.apiKey || '',
+		headers: { ...(config.headers ?? {}) },
 		temperature: config.temperature ?? DEFAULT_TEMPERATURE,
 		maxRetries: config.maxRetries ?? LLM_MAX_RETRIES,
 		disableNamedToolChoice: config.disableNamedToolChoice ?? false,
