@@ -94,6 +94,7 @@ export class Panel {
 
 		// Create UI elements
 		this.#wrapper = this.#createWrapper()
+		this.#settingsOverlay = this.#createSettingsOverlay()
 		this.#indicator = this.#wrapper.querySelector(`.${styles.indicator}`)!
 		this.#statusText = this.#wrapper.querySelector(`.${styles.statusText}`)!
 		this.#historySection = this.#wrapper.querySelector(`.${styles.historySection}`)!
@@ -102,14 +103,21 @@ export class Panel {
 		this.#inputSection = this.#wrapper.querySelector(`.${styles.inputSectionWrapper}`)!
 		this.#taskInput = this.#wrapper.querySelector(`.${styles.taskInput}`)!
 		this.#settingsButton = this.#wrapper.querySelector(`.${styles.settingsButton}`)!
-		this.#settingsOverlay = this.#wrapper.querySelector(`.${styles.settingsOverlay}`)!
-		this.#settingsCloseButton = this.#wrapper.querySelector(`.${styles.settingsCloseButton}`)!
-		this.#settingsSaveButton = this.#wrapper.querySelector(`.${styles.saveSettingsButton}`)!
-		this.#settingsBaseUrlInput = this.#wrapper.querySelector(`.${styles.settingsBaseUrlInput}`)!
-		this.#settingsModelInput = this.#wrapper.querySelector(`.${styles.settingsModelInput}`)!
-		this.#settingsApiKeyInput = this.#wrapper.querySelector(`.${styles.settingsApiKeyInput}`)!
-		this.#settingsHeadersList = this.#wrapper.querySelector(`.${styles.headersList}`)!
-		this.#settingsAddHeaderButton = this.#wrapper.querySelector(`.${styles.addHeaderButton}`)!
+		this.#settingsCloseButton = this.#settingsOverlay.querySelector(
+			`.${styles.settingsCloseButton}`
+		)!
+		this.#settingsSaveButton = this.#settingsOverlay.querySelector(`.${styles.saveSettingsButton}`)!
+		this.#settingsBaseUrlInput = this.#settingsOverlay.querySelector(
+			`.${styles.settingsBaseUrlInput}`
+		)!
+		this.#settingsModelInput = this.#settingsOverlay.querySelector(`.${styles.settingsModelInput}`)!
+		this.#settingsApiKeyInput = this.#settingsOverlay.querySelector(
+			`.${styles.settingsApiKeyInput}`
+		)!
+		this.#settingsHeadersList = this.#settingsOverlay.querySelector(`.${styles.headersList}`)!
+		this.#settingsAddHeaderButton = this.#settingsOverlay.querySelector(
+			`.${styles.addHeaderButton}`
+		)!
 		this.#settingsState = this.#getInitialSettings()
 
 		// Listen to agent events
@@ -279,6 +287,7 @@ export class Panel {
 		this.#isWaitingForUserAnswer = false
 		this.#stopHeaderUpdateLoop()
 		this.wrapper.remove()
+		this.#settingsOverlay.remove()
 	}
 
 	// ========== Private methods ==========
@@ -622,47 +631,58 @@ export class Panel {
 					/>
 				</div>
 			</div>
-			<div class="${styles.settingsOverlay} ${styles.hidden}">
-				<div class="${styles.settingsCard}">
-					<div class="${styles.settingsHeader}">
-						<div class="${styles.settingsTitle}">${this.#i18n.t('ui.panel.settings')}</div>
-						<button 
-							type="button" 
-							class="${styles.settingsIconButton} ${styles.settingsCloseButton}" 
-							title="${this.#i18n.t('ui.panel.closeSettings')}"
-						>
-							×
-						</button>
-					</div>
-					<div class="${styles.settingsBody}">
-						<label class="${styles.settingsLabel}">${this.#i18n.t('ui.panel.baseURL')}</label>
-						<input type="text" class="${styles.settingsInput} ${styles.settingsBaseUrlInput}" placeholder="${this.#i18n.t('ui.panel.baseURLPlaceholder')}" />
-
-						<label class="${styles.settingsLabel}">${this.#i18n.t('ui.panel.model')}</label>
-						<input type="text" class="${styles.settingsInput} ${styles.settingsModelInput}" placeholder="${this.#i18n.t('ui.panel.modelPlaceholder')}" />
-
-						<label class="${styles.settingsLabel}">${this.#i18n.t('ui.panel.apiKey')}</label>
-						<input type="password" class="${styles.settingsInput} ${styles.settingsApiKeyInput}" placeholder="${this.#i18n.t('ui.panel.apiKeyPlaceholder')}" />
-
-						<div class="${styles.settingsGroup}">
-							<div class="${styles.settingsGroupHeader}">
-								<span class="${styles.settingsLabel}">${this.#i18n.t('ui.panel.customHeaders')}</span>
-								<button type="button" class="${styles.settingsIconButton} ${styles.addHeaderButton}" title="${this.#i18n.t('ui.panel.addHeader')}">+</button>
-							</div>
-							<div class="${styles.headersList}"></div>
-						</div>
-					</div>
-					<div class="${styles.settingsFooter}">
-						<button type="button" class="${styles.settingsPrimaryButton} ${styles.saveSettingsButton}">
-							${this.#i18n.t('ui.panel.saveSettings')}
-						</button>
-					</div>
-				</div>
-			</div>
 		`
 
 		document.body.appendChild(wrapper)
 		return wrapper
+	}
+
+	#createSettingsOverlay(): HTMLElement {
+		const overlay = document.createElement('div')
+		overlay.className = `${styles.settingsOverlay} ${styles.hidden}`
+		overlay.setAttribute('data-browser-use-ignore', 'true')
+		overlay.setAttribute('data-page-agent-ignore', 'true')
+
+		overlay.innerHTML = `
+			<div class="${styles.settingsCard}">
+				<div class="${styles.settingsHeader}">
+					<div class="${styles.settingsTitle}">${this.#i18n.t('ui.panel.settings')}</div>
+					<button 
+						type="button" 
+						class="${styles.settingsIconButton} ${styles.settingsCloseButton}" 
+						title="${this.#i18n.t('ui.panel.closeSettings')}"
+					>
+						×
+					</button>
+				</div>
+				<div class="${styles.settingsBody}">
+					<label class="${styles.settingsLabel}">${this.#i18n.t('ui.panel.baseURL')}</label>
+					<input type="text" class="${styles.settingsInput} ${styles.settingsBaseUrlInput}" placeholder="${this.#i18n.t('ui.panel.baseURLPlaceholder')}" />
+
+					<label class="${styles.settingsLabel}">${this.#i18n.t('ui.panel.model')}</label>
+					<input type="text" class="${styles.settingsInput} ${styles.settingsModelInput}" placeholder="${this.#i18n.t('ui.panel.modelPlaceholder')}" />
+
+					<label class="${styles.settingsLabel}">${this.#i18n.t('ui.panel.apiKey')}</label>
+					<input type="password" class="${styles.settingsInput} ${styles.settingsApiKeyInput}" placeholder="${this.#i18n.t('ui.panel.apiKeyPlaceholder')}" />
+
+					<div class="${styles.settingsGroup}">
+						<div class="${styles.settingsGroupHeader}">
+							<span class="${styles.settingsLabel}">${this.#i18n.t('ui.panel.customHeaders')}</span>
+							<button type="button" class="${styles.settingsIconButton} ${styles.addHeaderButton}" title="${this.#i18n.t('ui.panel.addHeader')}">+</button>
+						</div>
+						<div class="${styles.headersList}"></div>
+					</div>
+				</div>
+				<div class="${styles.settingsFooter}">
+					<button type="button" class="${styles.settingsPrimaryButton} ${styles.saveSettingsButton}">
+						${this.#i18n.t('ui.panel.saveSettings')}
+					</button>
+				</div>
+			</div>
+		`
+
+		document.body.appendChild(overlay)
+		return overlay
 	}
 
 	#setupEventListeners(): void {
