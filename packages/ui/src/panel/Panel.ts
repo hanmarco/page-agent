@@ -40,6 +40,9 @@ interface SettingsState {
  * for what has been done, while activity shows what is happening now.
  */
 export class Panel {
+	static readonly DEFAULT_BASE_URL = 'http://a2g.samsungds.net:8090/v1'
+	static readonly DEFAULT_MODEL = 'glm5'
+
 	#wrapper: HTMLElement
 	#indicator: HTMLElement
 	#statusText: HTMLElement
@@ -427,8 +430,8 @@ export class Panel {
 		const rawHeaders = (agentConfig as { headers?: Record<string, string> }).headers
 
 		return {
-			baseURL: (agentConfig as { baseURL?: string }).baseURL || '',
-			model: (agentConfig as { model?: string }).model || '',
+			baseURL: (agentConfig as { baseURL?: string }).baseURL || Panel.DEFAULT_BASE_URL,
+			model: (agentConfig as { model?: string }).model || Panel.DEFAULT_MODEL,
 			apiKey: (agentConfig as { apiKey?: string }).apiKey || '',
 			headers: this.#normalizeHeaders(rawHeaders),
 		}
@@ -438,6 +441,8 @@ export class Panel {
 		return [
 			{ name: 'Content-Type', value: 'application/json' },
 			{ name: 'Accept', value: 'application/json' },
+			{ name: 'x-service-id', value: 'warp-agent' },
+			{ name: 'x-user-id', value: 'sss.han' },
 		]
 	}
 
