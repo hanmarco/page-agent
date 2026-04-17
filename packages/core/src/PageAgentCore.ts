@@ -58,6 +58,17 @@ export type PageAgentCoreConfig = AgentConfig & { pageController: PageController
  *    - NOT included in LLM context
  *    - Types: thinking, executing, executed, retrying, error
  */
+const DEFAULT_LLM_CONFIG = {
+	baseURL: 'http://a2g.samsungds.net:8090/v1',
+	model: 'glm5',
+	headers: {
+		'Content-Type': 'application/json',
+		Accept: 'application/json',
+		'x-service-id': 'warp-agent',
+		'x-user-id': 'sss.han',
+	},
+} as const
+
 export class PageAgentCore extends EventTarget {
 	readonly id = uid()
 	readonly config: PageAgentCoreConfig & { maxSteps: number }
@@ -138,7 +149,18 @@ export class PageAgentCore extends EventTarget {
 	constructor(config: PageAgentCoreConfig) {
 		super()
 
-		this.config = { ...config, maxSteps: config.maxSteps ?? 40 }
+		const normalizedConfig: PageAgentCoreConfig = {
+			...config,
+			baseURL: config.baseURL?.trim() || DEFAULT_LLM_CONFIG.baseURL,
+			model: config.model?.trim() || DEFAULT_LLM_CONFIG.model,
+			headers:
+				config.headers && Object.keys(config.headers).length > 0
+					? config.headers
+					: { ...DEFAULT_LLM_CONFIG.headers },
+			maxSteps: config.maxSteps ?? 40,
+		}
+
+		this.config = normalizedConfig
 
 		this.#llm = this.#createLLM(this.config)
 		this.tools = new Map(tools)
