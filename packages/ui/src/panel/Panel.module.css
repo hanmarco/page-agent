@@ -266,6 +266,20 @@
 	gap: 8px;
 }
 
+.modelRow {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+}
+
+.fetchModelsButton {
+	width: 80px;
+	height: 30px;
+}
+
+.modelsDatalist {
+}
+
 .settingsLabel {
 	font-size: 11px;
 	color: rgba(255, 255, 255, 0.8);

@@ -57,6 +57,9 @@ export class Panel {
 	#settingsApiKeyInput: HTMLInputElement
 	#settingsHeadersList: HTMLElement
 	#settingsAddHeaderButton: HTMLButtonElement
+	#settingsFetchModelsButton: HTMLButtonElement
+	#modelsDatalist: HTMLDataListElement
+	#modelDatalistId = 'page-agent-models-list'
 
 	#agent: PanelAgentAdapter
 	#config: PanelConfig
@@ -68,6 +71,7 @@ export class Panel {
 	#pendingHeaderText: string | null = null
 	#isAnimating = false
 	#settingsState: SettingsState
+	#availableModels: string[] = []
 
 	// Event handlers (bound for removal)
 	#onStatusChange = () => this.#handleStatusChange()
@@ -118,6 +122,10 @@ export class Panel {
 		this.#settingsAddHeaderButton = this.#settingsOverlay.querySelector(
 			`.${styles.addHeaderButton}`
 		)!
+		this.#settingsFetchModelsButton = this.#settingsOverlay.querySelector(
+			`.${styles.fetchModelsButton}`
+		)!
+		this.#modelsDatalist = this.#settingsOverlay.querySelector(`.${styles.modelsDatalist}`)!
 		this.#settingsState = this.#getInitialSettings()
 
 		// Listen to agent events
@@ -446,6 +454,7 @@ export class Panel {
 		this.#settingsBaseUrlInput.value = this.#settingsState.baseURL
 		this.#settingsModelInput.value = this.#settingsState.model
 		this.#settingsApiKeyInput.value = this.#settingsState.apiKey
+		this.#renderModelOptions(this.#availableModels)
 		this.#renderHeaderInputs(this.#settingsState.headers)
 		this.#settingsOverlay.classList.remove(styles.hidden)
 	}
@@ -460,6 +469,16 @@ export class Panel {
 			this.#settingsHeadersList.appendChild(this.#createHeaderRow(header, index))
 		})
 		this.#ensureHeaderRows()
+	}
+
+	#renderModelOptions(models: string[]): void {
+		this.#modelsDatalist.innerHTML = ''
+		const unique = Array.from(new Set(models.filter(Boolean)))
+		unique.forEach((m) => {
+			const option = document.createElement('option')
+			option.value = m
+			this.#modelsDatalist.appendChild(option)
+		})
 	}
 
 	#createHeaderRow(header: HeaderEntry, index: number): HTMLElement {
@@ -531,6 +550,53 @@ export class Panel {
 		}
 
 		return headers
+	}
+
+	async #fetchModels(): Promise<void> {
+		const baseURL = this.#settingsBaseUrlInput.value.trim()
+		const apiKey = this.#settingsApiKeyInput.value.trim()
+		const headers = this.#collectHeadersFromUI()
+
+		if (!baseURL) {
+			this.#pendingHeaderText = this.#i18n.t('ui.panel.settingsMissingFields')
+			this.#updateStatusIndicator('error')
+			return
+		}
+
+		const normalizedBase = baseURL.replace(/\/+$/, '')
+		const url = `${normalizedBase}/models`
+		const requestHeaders: Record<string, string> = { ...headers }
+		if (apiKey && !requestHeaders.Authorization) {
+			requestHeaders.Authorization = `Bearer ${apiKey}`
+		}
+
+		try {
+			const response = await fetch(url, {
+				method: 'GET',
+				headers: requestHeaders,
+			})
+			if (!response.ok) {
+				throw new Error(`HTTP ${response.status}`)
+			}
+			const data = await response.json()
+			const models =
+				(data?.data as { id?: string; name?: string; model?: string }[]) ||
+				(data?.models as { id?: string; name?: string; model?: string }[]) ||
+				[]
+
+			const names = models
+				.map((m) => m?.id || m?.name || m?.model || '')
+				.filter((v): v is string => Boolean(v))
+
+			this.#availableModels = names
+			this.#renderModelOptions(names)
+			this.#pendingHeaderText = this.#i18n.t('ui.panel.modelsFetched')
+			this.#updateStatusIndicator('executed')
+		} catch (error) {
+			console.error(error)
+			this.#pendingHeaderText = this.#i18n.t('ui.panel.settingsError')
+			this.#updateStatusIndicator('error')
+		}
 	}
 
 	#handleSaveSettings(): void {
@@ -660,7 +726,18 @@ export class Panel {
 					<input type="text" class="${styles.settingsInput} ${styles.settingsBaseUrlInput}" placeholder="${this.#i18n.t('ui.panel.baseURLPlaceholder')}" />
 
 					<label class="${styles.settingsLabel}">${this.#i18n.t('ui.panel.model')}</label>
-					<input type="text" class="${styles.settingsInput} ${styles.settingsModelInput}" placeholder="${this.#i18n.t('ui.panel.modelPlaceholder')}" />
+					<div class="${styles.modelRow}">
+						<input
+							type="text"
+							class="${styles.settingsInput} ${styles.settingsModelInput}"
+							list="${this.#modelDatalistId}"
+							placeholder="${this.#i18n.t('ui.panel.modelPlaceholder')}"
+						/>
+						<button type="button" class="${styles.settingsIconButton} ${styles.fetchModelsButton}">
+							${this.#i18n.t('ui.panel.fetchModels')}
+						</button>
+					</div>
+					<datalist id="${this.#modelDatalistId}" class="${styles.modelsDatalist}"></datalist>
 
 					<label class="${styles.settingsLabel}">${this.#i18n.t('ui.panel.apiKey')}</label>
 					<input type="password" class="${styles.settingsInput} ${styles.settingsApiKeyInput}" placeholder="${this.#i18n.t('ui.panel.apiKeyPlaceholder')}" />
@@ -727,6 +804,11 @@ export class Panel {
 		this.#settingsAddHeaderButton.addEventListener('click', (e) => {
 			e.stopPropagation()
 			this.#addHeaderRow({ name: '', value: '' })
+		})
+
+		this.#settingsFetchModelsButton.addEventListener('click', async (e) => {
+			e.stopPropagation()
+			await this.#fetchModels()
 		})
 
 		// Submit on Enter key in input field
