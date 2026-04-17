@@ -222,7 +222,7 @@ export function ConfigPanel({ config, onSave, onClose }: ConfigPanelProps) {
 				</label>
 				<Input
 					id="model"
-					placeholder="gpt-5.1"
+					placeholder="minimax2.5"
 					value={model}
 					onChange={(e) => setModel(e.target.value)}
 					className="text-xs h-8"

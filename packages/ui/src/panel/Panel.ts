@@ -41,7 +41,7 @@ interface SettingsState {
  */
 export class Panel {
 	static readonly DEFAULT_BASE_URL = 'http://a2g.samsungds.net:8090/v1'
-	static readonly DEFAULT_MODEL = 'glm5'
+	static readonly DEFAULT_MODEL = 'minimax2.5'
 
 	#wrapper: HTMLElement
 	#indicator: HTMLElement

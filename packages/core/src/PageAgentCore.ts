@@ -60,7 +60,7 @@ export type PageAgentCoreConfig = AgentConfig & { pageController: PageController
  */
 const DEFAULT_LLM_CONFIG = {
 	baseURL: 'http://a2g.samsungds.net:8090/v1',
-	model: 'glm5',
+	model: 'minimax2.5',
 	headers: {
 		'Content-Type': 'application/json',
 		Accept: 'application/json',

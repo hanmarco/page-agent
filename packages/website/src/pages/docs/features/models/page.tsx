@@ -5,7 +5,7 @@ import { Heading } from '@/components/Heading'
 import { useLanguage } from '@/i18n/context'
 
 const BASELINE = new Set([
-	'gpt-5.1',
+	'minimax2.5',
 	'claude-haiku-4.5',
 	'gemini-3-flash',
 	'deepseek-3.2',
@@ -23,7 +23,7 @@ const MODEL_GROUPS: Record<string, string[]> = {
 		'qwen-3-max',
 		'qwen-3-plus',
 	],
-	OpenAI: ['gpt-5.4', 'gpt-5.2', 'gpt-5.1', 'gpt-5', 'gpt-5-mini', 'gpt-4.1', 'gpt-4.1-mini'],
+	OpenAI: ['gpt-5.4', 'gpt-5.2', 'gpt-5', 'gpt-5-mini', 'gpt-4.1', 'gpt-4.1-mini'],
 	DeepSeek: ['deepseek-3.2'],
 	Google: ['gemini-3-pro', 'gemini-3-flash', 'gemini-2.5'],
 	Anthropic: [
@@ -150,7 +150,7 @@ const pageAgent = new PageAgent({
 				<CodeEditor
 					code={`const agent = new PageAgent({
   baseURL: '/api/llm-proxy',
-  model: 'gpt-5.1',
+  model: 'minimax2.5',
   customFetch: (url, init) =>
     fetch(url, { ...init, credentials: 'include' }),
 });`}
