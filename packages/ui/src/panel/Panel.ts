@@ -612,6 +612,12 @@ export class Panel {
 					<input 
 						type="text" 
 						class="${styles.taskInput}" 
+						name="page-agent-task"
+						autocomplete="off"
+						autocorrect="off"
+						autocapitalize="none"
+						spellcheck="false"
+						inputmode="text"
 						maxlength="${taskInputMaxLength}"
 					/>
 				</div>

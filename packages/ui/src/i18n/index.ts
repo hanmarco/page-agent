@@ -10,8 +10,8 @@ export class I18n {
 	private language: SupportedLanguage
 	private translations: TranslationSchema
 
-	constructor(language: SupportedLanguage = 'en-US') {
-		this.language = language in locales ? language : 'en-US'
+	constructor(language: SupportedLanguage = 'ko-KR') {
+		this.language = language in locales ? language : 'ko-KR'
 		this.translations = locales[this.language]
 	}
 
