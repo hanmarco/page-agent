@@ -275,7 +275,18 @@
 .modelsSelect {
 	min-width: 120px;
 	max-width: 160px;
-	height: 30px;
+	height: 32px;
+	background: rgba(255, 255, 255, 0.1);
+	color: #f5f5f5;
+	border: 1px solid rgba(255, 255, 255, 0.25);
+	border-radius: 8px;
+	padding: 6px 8px;
+	appearance: none;
+}
+
+.modelsSelect option {
+	background: rgba(13, 13, 26, 0.95);
+	color: #f5f5f5;
 }
 
 .fetchModelsButton {
