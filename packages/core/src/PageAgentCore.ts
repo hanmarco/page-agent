@@ -62,8 +62,6 @@ const DEFAULT_LLM_CONFIG = {
 	baseURL: 'http://a2g.samsungds.net:8090/v1',
 	model: 'minimax2.5',
 	headers: {
-		'Content-Type': 'application/json',
-		Accept: 'application/json',
 		'x-service-id': 'warp-agent',
 		'x-user-id': 'sss.han',
 	},
