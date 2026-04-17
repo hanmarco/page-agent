@@ -714,12 +714,6 @@ export class Panel {
 			this.#openSettings()
 		})
 
-		this.#settingsOverlay.addEventListener('click', (e) => {
-			if (e.target === this.#settingsOverlay) {
-				this.#closeSettings()
-			}
-		})
-
 		this.#settingsCloseButton.addEventListener('click', (e) => {
 			e.stopPropagation()
 			this.#closeSettings()

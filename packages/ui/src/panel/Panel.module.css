@@ -368,7 +368,7 @@
 	border: none;
 	border-radius: 10px;
 	background: linear-gradient(90deg, var(--color-1), var(--color-2));
-	color: #0f0f0f;
+	color: #f7f7f7;
 	font-weight: 700;
 	padding: 8px 12px;
 	cursor: pointer;
