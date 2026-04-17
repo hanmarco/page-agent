@@ -59,6 +59,7 @@ export class Panel {
 	#settingsAddHeaderButton: HTMLButtonElement
 	#settingsFetchModelsButton: HTMLButtonElement
 	#modelsDatalist: HTMLDataListElement
+	#modelsSelect: HTMLSelectElement
 	#modelDatalistId = 'page-agent-models-list'
 
 	#agent: PanelAgentAdapter
@@ -126,6 +127,7 @@ export class Panel {
 			`.${styles.fetchModelsButton}`
 		)!
 		this.#modelsDatalist = this.#settingsOverlay.querySelector(`.${styles.modelsDatalist}`)!
+		this.#modelsSelect = this.#settingsOverlay.querySelector(`.${styles.modelsSelect}`)!
 		this.#settingsState = this.#getInitialSettings()
 
 		// Listen to agent events
@@ -472,12 +474,24 @@ export class Panel {
 	}
 
 	#renderModelOptions(models: string[]): void {
-		this.#modelsDatalist.innerHTML = ''
 		const unique = Array.from(new Set(models.filter(Boolean)))
+		this.#modelsDatalist.innerHTML = ''
 		unique.forEach((m) => {
 			const option = document.createElement('option')
 			option.value = m
 			this.#modelsDatalist.appendChild(option)
+		})
+
+		this.#modelsSelect.innerHTML = ''
+		const placeholder = document.createElement('option')
+		placeholder.value = ''
+		placeholder.textContent = this.#i18n.t('ui.panel.modelPlaceholder')
+		this.#modelsSelect.appendChild(placeholder)
+		unique.forEach((m) => {
+			const opt = document.createElement('option')
+			opt.value = m
+			opt.textContent = m
+			this.#modelsSelect.appendChild(opt)
 		})
 	}
 
@@ -733,8 +747,16 @@ export class Panel {
 							list="${this.#modelDatalistId}"
 							placeholder="${this.#i18n.t('ui.panel.modelPlaceholder')}"
 						/>
-						<button type="button" class="${styles.settingsIconButton} ${styles.fetchModelsButton}">
-							${this.#i18n.t('ui.panel.fetchModels')}
+						<select class="${styles.settingsInput} ${styles.modelsSelect}">
+							<option value="">${this.#i18n.t('ui.panel.modelPlaceholder')}</option>
+						</select>
+						<button 
+							type="button" 
+							class="${styles.settingsIconButton} ${styles.fetchModelsButton}"
+							title="${this.#i18n.t('ui.panel.fetchModels')}"
+							aria-label="${this.#i18n.t('ui.panel.fetchModels')}"
+						>
+							⟳
 						</button>
 					</div>
 					<datalist id="${this.#modelDatalistId}" class="${styles.modelsDatalist}"></datalist>
@@ -809,6 +831,13 @@ export class Panel {
 		this.#settingsFetchModelsButton.addEventListener('click', async (e) => {
 			e.stopPropagation()
 			await this.#fetchModels()
+		})
+
+		this.#modelsSelect.addEventListener('change', (e) => {
+			const target = e.target as HTMLSelectElement
+			if (target.value) {
+				this.#settingsModelInput.value = target.value
+			}
 		})
 
 		// Submit on Enter key in input field
