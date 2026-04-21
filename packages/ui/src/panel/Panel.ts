@@ -591,7 +591,7 @@ export class Panel {
 			requestHeaders.Authorization = `Bearer ${apiKey}`
 		}
 
-		const request = async () => {
+		try {
 			const response = await fetch(url, {
 				method: 'GET',
 				headers: requestHeaders,
@@ -599,14 +599,6 @@ export class Panel {
 			if (!response.ok) {
 				throw new Error(`HTTP ${response.status}`)
 			}
-			return response
-		}
-
-		try {
-			const response = await request().catch(async (err) => {
-				console.warn('Fetch models failed, retrying with GET', err)
-				return await request()
-			})
 			const data = await response.json()
 			const models =
 				(data?.data as { id?: string; name?: string; model?: string }[]) ||
