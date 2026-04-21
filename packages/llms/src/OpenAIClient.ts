@@ -48,17 +48,31 @@ export class OpenAIClient implements LLMClient {
 
 		// 2. Call API
 		let response: Response
-		try {
-			const headers: Record<string, string> = {
-				'Content-Type': 'application/json',
-				...(this.config.apiKey && { Authorization: `Bearer ${this.config.apiKey}` }),
-				...this.config.headers,
-			}
-			response = await this.fetch(`${this.config.baseURL}/chat/completions`, {
+		const headers: Record<string, string> = {
+			'Content-Type': 'application/json',
+			...(this.config.apiKey && { Authorization: `Bearer ${this.config.apiKey}` }),
+			...this.config.headers,
+		}
+
+		const sendRequest = async (): Promise<Response> => {
+			const res = await this.fetch(`${this.config.baseURL}/chat/completions`, {
 				method: 'POST',
 				headers,
 				body: JSON.stringify(requestBody),
 				signal: abortSignal,
+			})
+			if (res.status === 405) {
+				throw new Error('Method Not Allowed')
+			}
+			return res
+		}
+
+		try {
+			response = await sendRequest().catch(async (error) => {
+				const isAbortError = (error as any)?.name === 'AbortError'
+				if (isAbortError) throw error
+				console.warn('POST /chat/completions failed, retrying once', error)
+				return await sendRequest()
 			})
 		} catch (error: unknown) {
 			const isAbortError = (error as any)?.name === 'AbortError'
