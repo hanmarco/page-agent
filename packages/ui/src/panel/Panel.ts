@@ -40,9 +40,6 @@ interface SettingsState {
  * for what has been done, while activity shows what is happening now.
  */
 export class Panel {
-	static readonly DEFAULT_BASE_URL = 'http://a2g.samsungds.net:8090/v1'
-	static readonly DEFAULT_MODEL = 'minimax2.5'
-
 	#wrapper: HTMLElement
 	#indicator: HTMLElement
 	#statusText: HTMLElement
@@ -432,8 +429,8 @@ export class Panel {
 		const modelValue = (agentConfig as { model?: string }).model
 
 		return {
-			baseURL: baseURLValue?.trim() || Panel.DEFAULT_BASE_URL,
-			model: modelValue?.trim() || Panel.DEFAULT_MODEL,
+			baseURL: baseURLValue?.trim() || '',
+			model: modelValue?.trim() || '',
 			apiKey: (agentConfig as { apiKey?: string }).apiKey || '',
 			headers: this.#normalizeHeaders(rawHeaders),
 		}
@@ -441,21 +438,14 @@ export class Panel {
 
 	#getDefaultHeaders(): HeaderEntry[] {
 		return [
-			{ name: 'Content-Type', value: 'application/json' },
-			{ name: 'Accept', value: 'application/json' },
 			{ name: 'x-service-id', value: 'warp-agent' },
-			{ name: 'x-user-id', value: 'sss.han' },
+			{ name: 'x-user-id', value: 'user.id' },
 		]
 	}
 
 	#normalizeHeaders(headers?: Record<string, string>): HeaderEntry[] {
-		const entries = headers ? Object.entries(headers).map(([name, value]) => ({ name, value })) : []
-		const defaults = this.#getDefaultHeaders()
-		if (entries.length === 0) return defaults
-		while (entries.length < 2) {
-			entries.push(defaults[entries.length] ?? { name: '', value: '' })
-		}
-		return entries
+		if (!headers || Object.keys(headers).length === 0) return this.#getDefaultHeaders()
+		return Object.entries(headers).map(([name, value]) => ({ name, value }))
 	}
 
 	#openSettings(): void {
@@ -563,12 +553,6 @@ export class Panel {
 				headers[name] = value
 			}
 		})
-
-		if (Object.keys(headers).length === 0) {
-			for (const { name, value } of this.#getDefaultHeaders()) {
-				headers[name] = value
-			}
-		}
 
 		return headers
 	}

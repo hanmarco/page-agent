@@ -59,11 +59,11 @@ export type PageAgentCoreConfig = AgentConfig & { pageController: PageController
  *    - Types: thinking, executing, executed, retrying, error
  */
 const DEFAULT_LLM_CONFIG = {
-	baseURL: 'http://a2g.samsungds.net:8090/v1',
+	baseURL: 'https://dummy.url',
 	model: 'minimax2.5',
 	headers: {
 		'x-service-id': 'warp-agent',
-		'x-user-id': 'sss.han',
+		'x-user-id': 'user.id',
 	},
 } as const
 

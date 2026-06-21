@@ -14,7 +14,7 @@ window.PageAgent = PageAgent
 console.log('🚀 page-agent.js loaded!')
 
 const DEMO_MODEL = 'minimax2.5'
-const DEMO_BASE_URL = 'http://a2g.samsungds.net:8090/v1'
+const DEMO_BASE_URL = 'https://dummy.url'
 const DEMO_API_KEY = 'NA'
 
 const currentScript = document.currentScript as HTMLScriptElement | null
