@@ -44,7 +44,7 @@ export default function ScenariosSection() {
 									</div>
 									<div className="pl-4">
 										<span className="text-blue-300">model</span>:{' '}
-										<span className="text-emerald-400">&apos;gpt-5.1&apos;</span>,
+										<span className="text-emerald-400">&apos;minimax2.5&apos;</span>,
 									</div>
 									<div className="pl-4">
 										<span className="text-blue-300">apiKey</span>:{' '}

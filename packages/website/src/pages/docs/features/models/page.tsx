@@ -8,6 +8,7 @@ import { useLanguage } from '@/i18n/context'
 const BASELINE = new Set([
 	'gpt-5.1',
 	'gpt-5.4-mini',
+	'minimax2.5',
 	'claude-haiku-4.5',
 	'gemini-3.5-flash',
 	'deepseek-v4-flash',
@@ -147,6 +148,46 @@ const pageAgent = new PageAgent({
 });
 `}
 				/>
+			</section>
+
+			<section className="mb-10">
+				<Heading id="production-authentication" className="text-2xl font-semibold mb-4">
+					{isZh ? '🔐 生产环境鉴权' : '🔐 Production Authentication'}
+				</Heading>
+				<p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+					{isZh
+						? '如果你只是将它用作个人助手，可以直接连接你的 LLM 服务。'
+						: 'If you only use it as a personal assistant, you can connect to your LLM service directly.'}
+				</p>
+				<p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+					{isZh ? (
+						<>
+							如果你计划将它集成到你的 Web 应用中，建议搭建一个后端代理来转发 LLM 请求，并使用{' '}
+							<code>customFetch</code> 携带 Cookie 或其他鉴权信息：
+						</>
+					) : (
+						<>
+							If you plan to integrate it into your web app, it's better to have a backend proxy for
+							the LLM and use <code>customFetch</code> to authenticate the request with cookies or
+							other methods:
+						</>
+					)}
+				</p>
+				<CodeEditor
+					code={`const agent = new PageAgent({
+  baseURL: '/api/llm-proxy',
+  model: 'minimax2.5',
+  customFetch: (url, init) =>
+    fetch(url, { ...init, credentials: 'include' }),
+});`}
+				/>
+				<div className="mt-4 bg-yellow-50 dark:bg-yellow-950/20 border-l-4 border-yellow-500 p-4 rounded-r-lg">
+					<p className="text-sm font-semibold text-yellow-900 dark:text-yellow-200">
+						{isZh
+							? '⚠️ 永远不要把真实的 LLM API Key 提交到前端代码中'
+							: '⚠️ NEVER commit real LLM API keys to your frontend code'}
+					</p>
+				</div>
 			</section>
 
 			<section className="mb-10">

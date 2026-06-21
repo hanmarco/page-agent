@@ -3,7 +3,7 @@
  * Copyright (C) 2026 SimonLuvRamen
  * All rights reserved.
  */
-import { InvokeError, LLM, type Tool } from '@page-agent/llms'
+import { InvokeError, LLM, type LLMConfig, type Tool, parseLLMConfig } from '@page-agent/llms'
 import type { BrowserState, PageController } from '@page-agent/page-controller'
 import chalk from 'chalk'
 import * as z from 'zod/v4'
@@ -58,6 +58,15 @@ export type PageAgentCoreConfig = AgentConfig & { pageController: PageController
  *    - NOT included in LLM context
  *    - Types: thinking, executing, executed, retrying, error
  */
+const DEFAULT_LLM_CONFIG = {
+	baseURL: 'https://dummy.url',
+	model: 'minimax2.5',
+	headers: {
+		'x-service-id': 'warp-agent',
+		'x-user-id': 'user.id',
+	},
+} as const
+
 export class PageAgentCore extends EventTarget {
 	readonly id = uid()
 	readonly config: PageAgentCoreConfig & { maxSteps: number }
@@ -90,6 +99,47 @@ export class PageAgentCore extends EventTarget {
 	 */
 	#abortController = new AbortController()
 	#observations: string[] = []
+	#onLlmRetry = (e: Event) => {
+		const { attempt, maxAttempts } = (e as CustomEvent).detail
+		this.#emitActivity({ type: 'retrying', attempt, maxAttempts })
+		// Also push to history for panel rendering
+		this.history.push({
+			type: 'retry',
+			message: `LLM retry attempt ${attempt} of ${maxAttempts}`,
+			attempt,
+			maxAttempts,
+		})
+		this.#emitHistoryChange()
+	}
+	#onLlmError = (e: Event) => {
+		const error = (e as CustomEvent).detail.error as Error | InvokeError
+		if ((error as any)?.rawError?.name === 'AbortError') return
+		const message = String(error)
+		this.#emitActivity({ type: 'error', message })
+		// Also push to history for panel rendering
+		this.history.push({
+			type: 'error',
+			message,
+			rawResponse: (error as InvokeError).rawResponse,
+		})
+		this.#emitHistoryChange()
+	}
+
+	#attachLlmListeners(llm: LLM): void {
+		llm.addEventListener('retry', this.#onLlmRetry)
+		llm.addEventListener('error', this.#onLlmError)
+	}
+
+	#detachLlmListeners(llm: LLM): void {
+		llm.removeEventListener('retry', this.#onLlmRetry)
+		llm.removeEventListener('error', this.#onLlmError)
+	}
+
+	#createLLM(config: LLMConfig): LLM {
+		const llm = new LLM(config)
+		this.#attachLlmListeners(llm)
+		return llm
+	}
 
 	/** Resolves when the current run has fully settled. Awaited by `stop()`. */
 	#running: Promise<void> = Promise.resolve()
@@ -108,28 +158,22 @@ export class PageAgentCore extends EventTarget {
 	constructor(config: PageAgentCoreConfig) {
 		super()
 
-		this.config = { ...config, maxSteps: config.maxSteps ?? 40 }
+		const normalizedConfig: PageAgentCoreConfig = {
+			...config,
+			baseURL: config.baseURL?.trim() || DEFAULT_LLM_CONFIG.baseURL,
+			model: config.model?.trim() || DEFAULT_LLM_CONFIG.model,
+			headers:
+				config.headers && Object.keys(config.headers).length > 0
+					? config.headers
+					: { ...DEFAULT_LLM_CONFIG.headers },
+			maxSteps: config.maxSteps ?? 40,
+		}
 
-		this.#llm = new LLM(this.config)
+		this.config = normalizedConfig
+
+		this.#llm = this.#createLLM(this.config)
 		this.tools = new Map(tools)
 		this.pageController = config.pageController
-
-		this.#llm.addEventListener('retry', (e) => {
-			const { attempt, maxAttempts, lastError } = (e as CustomEvent).detail
-			this.#emitActivity({ type: 'retrying', attempt, maxAttempts })
-			this.history.push({
-				type: 'error',
-				message: String(lastError),
-				rawResponse: (lastError as InvokeError).rawResponse,
-			})
-			this.history.push({
-				type: 'retry',
-				message: `LLM retry attempt ${attempt} of ${maxAttempts}`,
-				attempt,
-				maxAttempts,
-			})
-			this.#emitHistoryChange()
-		})
 
 		if (this.config.customTools) {
 			for (const [name, tool] of Object.entries(this.config.customTools)) {
@@ -203,6 +247,43 @@ export class PageAgentCore extends EventTarget {
 		await this.#running
 	}
 
+	getLLMConfig(): Pick<LLMConfig, 'baseURL' | 'model' | 'apiKey' | 'headers'> {
+		const { baseURL, model, apiKey, headers } = this.#llm.config
+		return {
+			baseURL,
+			model,
+			apiKey,
+			headers: { ...headers },
+		}
+	}
+
+	updateLLMConfig(config: Partial<LLMConfig>): void {
+		if (this.status === 'running') {
+			throw new Error('Cannot update LLM config while a task is running.')
+		}
+
+		const sanitizedHeaders =
+			config.headers === undefined
+				? undefined
+				: Object.fromEntries(
+						Object.entries(config.headers)
+							.filter(([key]) => key.trim())
+							.map(([key, value]) => [key.trim(), value])
+					)
+
+		const mergedConfig: LLMConfig = {
+			...this.#llm.config,
+			...config,
+			headers: sanitizedHeaders ?? this.#llm.config.headers,
+		}
+
+		const parsedConfig = parseLLMConfig(mergedConfig)
+
+		this.#detachLlmListeners(this.#llm)
+		this.#llm = this.#createLLM(parsedConfig)
+		Object.assign(this.config, parsedConfig)
+	}
+
 	/**
 	 * external errors (pre-checks/config/hooks) will threw;
 	 * agent errors will be caught and added to history, and return a failed result
@@ -240,7 +321,7 @@ export class PageAgentCore extends EventTarget {
 
 		let step = 0
 		let taskResult: ExecutionResult
-		let finalStatus: AgentStatus = 'error'
+		let finalStatus!: AgentStatus
 
 		await suppress(() => this.pageController.showMask())
 

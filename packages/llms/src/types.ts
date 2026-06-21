@@ -91,6 +91,7 @@ export interface LLMConfig {
 	baseURL: string
 	model: string
 	apiKey?: string
+	headers?: Record<string, string>
 
 	temperature?: number
 	maxRetries?: number

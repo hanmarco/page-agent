@@ -46,9 +46,10 @@ export async function parallelTask(tasks, options = {}) {
 				new Promise((resolve) => {
 					const chunks = /** @type {Buffer[]} */ ([])
 
-					const child = spawn('sh', ['-c', task.command], {
+					const child = spawn(task.command, {
 						cwd: task.cwd,
 						env: { ...process.env, FORCE_COLOR: '1', NO_COLOR: '' },
+						shell: true,
 						stdio: ['ignore', 'pipe', 'pipe'],
 					})
 

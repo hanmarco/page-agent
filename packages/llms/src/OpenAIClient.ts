@@ -62,12 +62,14 @@ export class OpenAIClient implements LLMClient {
 		// 2. Call API
 		let response: Response
 		try {
+			const headers: Record<string, string> = {
+				'Content-Type': 'application/json',
+				...(this.config.apiKey && { Authorization: `Bearer ${this.config.apiKey}` }),
+				...this.config.headers,
+			}
 			response = await this.fetch(`${this.config.baseURL}/chat/completions`, {
 				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					...(this.config.apiKey && { Authorization: `Bearer ${this.config.apiKey}` }),
-				},
+				headers,
 				body: JSON.stringify(finalRequestBody),
 				signal: abortSignal,
 			})

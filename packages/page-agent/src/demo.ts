@@ -17,8 +17,8 @@ window.PageAgent = PageAgent
 
 console.log('🚀 page-agent.js loaded!')
 
-const DEMO_MODEL = 'qwen3.5-plus'
-const DEMO_BASE_URL = 'https://page-ag-testing-ohftxirgbn.cn-shanghai.fcapp.run'
+const DEMO_MODEL = 'minimax2.5'
+const DEMO_BASE_URL = 'https://dummy.url'
 const DEMO_API_KEY = 'NA'
 
 // in case document.x is not ready yet
@@ -27,12 +27,13 @@ if (autoInit) {
 		let config: PageAgentConfig
 		let showPanel = true
 
-		if (currentScriptURL) {
-			const url = currentScriptURL
+		if (currentScript) {
+			console.log('🚀 page-agent.js detected current script:', currentScript.src)
+			const url = new URL(currentScript.src)
 			const model = url.searchParams.get('model') || DEMO_MODEL
 			const baseURL = url.searchParams.get('baseURL') || DEMO_BASE_URL
 			const apiKey = url.searchParams.get('apiKey') || DEMO_API_KEY
-			const language = (url.searchParams.get('lang') as 'zh-CN' | 'en-US') || 'zh-CN'
+			const language = (url.searchParams.get('lang') as 'zh-CN' | 'en-US' | 'ko-KR') || 'ko-KR'
 			showPanel = ((url.searchParams.get('showPanel') as 'true' | 'false') || 'true') === 'true'
 			config = { model, baseURL, apiKey, language }
 		} else {
@@ -41,6 +42,7 @@ if (autoInit) {
 				model: import.meta.env.LLM_MODEL_NAME ? import.meta.env.LLM_MODEL_NAME : DEMO_MODEL,
 				baseURL: import.meta.env.LLM_BASE_URL ? import.meta.env.LLM_BASE_URL : DEMO_BASE_URL,
 				apiKey: import.meta.env.LLM_API_KEY ? import.meta.env.LLM_API_KEY : DEMO_API_KEY,
+				language: 'ko-KR',
 			}
 		}
 
