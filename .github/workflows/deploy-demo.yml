@@ -2,7 +2,7 @@ name: Deploy Demo
 
 on:
   push:
-    branches: [main]
+    branches: [custom]
 
 jobs:
   deploy:
@@ -26,6 +26,12 @@ jobs:
 
       - name: Build demo
         run: npm run build:website
+
+      - name: Build demo IIFE
+        run: npm run build:demo -w page-agent
+
+      - name: Copy demo JS into website dist
+        run: cp packages/page-agent/dist/iife/page-agent.demo.js packages/website/dist/page-agent.demo.js
 
       - name: Setup Pages
         uses: actions/configure-pages@v6
